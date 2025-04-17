@@ -1,16 +1,86 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // DOM Elements
     const gameBoard = document.getElementById('game-board');
     const movesCount = document.getElementById('moves-count');
+    const timerElement = document.getElementById('timer');
+    const bestTimeElement = document.getElementById('best-time');
+    const hintButton = document.getElementById('hint');
+    const hintCountElement = document.getElementById('hint-count');
+    const pauseButton = document.getElementById('pause');
     const restartButton = document.getElementById('restart');
+    const difficultySelect = document.getElementById('difficulty');
+    const themeSelect = document.getElementById('theme');
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const leaderboardBody = document.getElementById('leaderboard-body');
+    const victoryModal = document.getElementById('victory-modal');
+    const pauseModal = document.getElementById('pause-modal');
+    const victoryMovesElement = document.getElementById('victory-moves');
+    const victoryTimeElement = document.getElementById('victory-time');
+    const newRecordElement = document.getElementById('new-record');
+    const playAgainButton = document.getElementById('play-again');
+    const changeSettingsButton = document.getElementById('change-settings');
+    const resumeGameButton = document.getElementById('resume-game');
+    const closeModalButton = document.querySelector('.close-modal');
+    const confettiCanvas = document.getElementById('confetti-canvas');
     
+    // Game state variables
     let cards = [];
     let firstCard = null;
     let secondCard = null;
     let lockBoard = false;
     let moves = 0;
+    let hintsRemaining = 3;
+    let timer = null;
+    let seconds = 0;
+    let isGameActive = false;
+    let isPaused = false;
+    let currentDifficulty = 'easy';
+    let currentTheme = 'jungle';
+    let confettiInstance = null;
     
-    // Animal icons (SVG data)
-    const animals = [
+    // Sound effects
+    const sounds = {
+        flip: new Audio('https://assets.mixkit.co/active_storage/sfx/2073/2073-preview.mp3'),
+        match: new Audio('https://assets.mixkit.co/active_storage/sfx/270/270-preview.mp3'),
+        noMatch: new Audio('https://assets.mixkit.co/active_storage/sfx/2/2-preview.mp3'),
+        victory: new Audio('https://assets.mixkit.co/active_storage/sfx/1010/1010-preview.mp3'),
+        hint: new Audio('https://assets.mixkit.co/active_storage/sfx/2039/2039-preview.mp3')
+    };
+    
+    // Preload sounds
+    Object.values(sounds).forEach(sound => {
+        sound.load();
+        sound.volume = 0.5;
+    });
+    
+    // Theme definitions
+    const themes = {
+        jungle: {
+            name: 'Jungle',
+            class: 'theme-jungle',
+            cardBack: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><path d=\'M9 18l6-6-6-6\'/></svg>")'
+        },
+        ocean: {
+            name: 'Ocean',
+            class: 'theme-ocean',
+            cardBack: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><path d=\'M7 16l10-10M7 6h10v10\'/></svg>")'
+        },
+        farm: {
+            name: 'Farm',
+            class: 'theme-farm',
+            cardBack: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><path d=\'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\'/></svg>")'
+        }
+    };
+    
+    // Difficulty settings
+    const difficulties = {
+        easy: { rows: 4, cols: 4, pairs: 8, hints: 3 },
+        medium: { rows: 4, cols: 5, pairs: 10, hints: 2 },
+        hard: { rows: 6, cols: 6, pairs: 18, hints: 1 }
+    };
+    
+    // Animal collections for different themes
+    const jungleAnimals = [
         {
             name: 'cat',
             icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M290.59 192c-20.18 0-106.82 1.98-162.59 85.95V192c0-52.94-43.06-96-96-96-17.67 0-32 14.33-32 32s14.33 32 32 32c17.64 0 32 14.36 32 32v256c0 35.3 28.7 64 64 64h176c8.84 0 16-7.16 16-16v-16c0-17.67-14.33-32-32-32h-32l128-96v144c0 8.84 7.16 16 16 16h32c8.84 0 16-7.16 16-16V289.86c-10.29 2.67-20.89 4.54-32 4.54-61.81 0-113.52-44.05-125.41-102.4zM448 96h-64l-64-64v134.4c0 53.02 42.98 96 96 96s96-42.98 96-96V32l-64 64zm-72 80c-8.84 0-16-7.16-16-16s7.16-16 16-16 16 7.16 16 16-7.16 16-16 16zm80 0c-8.84 0-16-7.16-16-16s7.16-16 16-16 16 7.16 16 16-7.16 16-16 16z"/></svg>'
@@ -45,6 +115,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     ];
     
+    // Timer functions
+    function startTimer() {
+        clearInterval(timer);
+        seconds = 0;
+        timerElement.textContent = '00:00';
+        timer = setInterval(() => {
+            seconds++;
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }, 1000);
+        isGameActive = true;
+    }
+    
+    function stopTimer() {
+        clearInterval(timer);
+        isGameActive = false;
+    }
+    
+    function resetTimer() {
+        clearInterval(timer);
+        seconds = 0;
+        timerElement.textContent = '00:00';
+    }
+    
+    // Load best time from localStorage
+    function loadBestTime() {
+        const bestTime = localStorage.getItem(`bestTime-${currentDifficulty}`);
+        if (bestTime) {
+            bestTimeElement.textContent = formatTime(parseInt(bestTime));
+        } else {
+            bestTimeElement.textContent = '--:--';
+        }
+    }
+    
+    // Format time as MM:SS
+    function formatTime(totalSeconds) {
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Save best time to localStorage
+    function saveBestTime() {
+        const currentBestTime = localStorage.getItem(`bestTime-${currentDifficulty}`);
+        if (!currentBestTime || seconds < parseInt(currentBestTime)) {
+            localStorage.setItem(`bestTime-${currentDifficulty}`, seconds.toString());
+            return true; // New record
+        }
+        return false; // Not a new record
+    }
+    
     // Initialize game
     function initGame() {
         moves = 0;
@@ -52,14 +174,37 @@ document.addEventListener('DOMContentLoaded', () => {
         firstCard = null;
         secondCard = null;
         lockBoard = false;
+        hintsRemaining = difficulties[currentDifficulty].hints;
+        hintCountElement.textContent = hintsRemaining;
+        resetTimer();
+        loadBestTime();
+        
+        // Get animals based on current theme and difficulty
+        let animals;
+        if (currentTheme === 'jungle') {
+            animals = jungleAnimals;
+        } else if (currentTheme === 'ocean') {
+            animals = oceanAnimals;
+        } else if (currentTheme === 'farm') {
+            animals = farmAnimals;
+        } else {
+            animals = jungleAnimals; // Default
+        }
+        
+        // Get number of pairs based on difficulty
+        const numPairs = difficulties[currentDifficulty].pairs;
+        
+        // Select random animals for this game
+        const selectedAnimals = shuffleArray(animals).slice(0, numPairs);
         
         // Create array with pairs of animals
-        const animalPairs = [...animals, ...animals];
+        const animalPairs = [...selectedAnimals, ...selectedAnimals];
         // Shuffle array
         cards = shuffleArray(animalPairs);
         
         // Generate cards
         gameBoard.innerHTML = '';
+        gameBoard.className = `game-board ${currentDifficulty}`;
         cards.forEach((animal, index) => {
             const card = document.createElement('div');
             card.classList.add('card');
@@ -95,6 +240,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function flipCard() {
         if (lockBoard) return;
         if (this === firstCard) return;
+        if (isPaused) return;
+        
+        // Start timer on first card flip if game is not active
+        if (!isGameActive) {
+            startTimer();
+        }
+        
+        // Play flip sound
+        sounds.flip.currentTime = 0;
+        sounds.flip.play();
         
         this.classList.add('flipped');
         
@@ -114,8 +269,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const isMatch = firstCard.dataset.name === secondCard.dataset.name;
         
         if (isMatch) {
+            // Play match sound
+            sounds.match.currentTime = 0;
+            sounds.match.play();
             disableCards();
         } else {
+            // Play no match sound
+            sounds.noMatch.currentTime = 0;
+            sounds.noMatch.play();
             unflipCards();
         }
         
@@ -134,7 +295,10 @@ document.addEventListener('DOMContentLoaded', () => {
         firstCard.removeEventListener('click', flipCard);
         secondCard.removeEventListener('click', flipCard);
         
-        resetBoard();
+        // Add a slight delay before resetting the board to allow for animation
+        setTimeout(() => {
+            resetBoard();
+        }, 300);
     }
     
     // Unflip cards if no match
@@ -157,14 +321,267 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkGameOver() {
         const matchedCards = document.querySelectorAll('.matched');
         if (matchedCards.length === cards.length) {
+            // Stop the timer
+            stopTimer();
+            
+            // Play victory sound
+            sounds.victory.currentTime = 0;
+            sounds.victory.play();
+            
+            // Start confetti animation
+            startConfetti();
+            
+            // Update victory modal
+            victoryMovesElement.textContent = moves;
+            victoryTimeElement.textContent = formatTime(seconds);
+            
+            // Check if this is a new record
+            const isNewRecord = saveBestTime();
+            if (isNewRecord) {
+                newRecordElement.classList.remove('hidden');
+            } else {
+                newRecordElement.classList.add('hidden');
+            }
+            
+            // Update leaderboard
+            updateLeaderboard();
+            
+            // Show victory modal after a short delay
             setTimeout(() => {
-                alert(`Congratulations! You completed the game in ${moves} moves.`);
-            }, 500);
+                victoryModal.classList.add('show');
+            }, 1000);
         }
     }
     
-    // Restart game
-    restartButton.addEventListener('click', initGame);
+    // Start confetti animation
+    function startConfetti() {
+        confettiCanvas.style.display = 'block';
+        const confettiSettings = { target: 'confetti-canvas', max: 150, size: 1.5, animate: true, props: ['circle', 'square', 'triangle', 'line'], colors: [[165,104,246],[230,61,135],[0,199,228],[253,214,126]], clock: 25 };
+        confettiInstance = new ConfettiGenerator(confettiSettings);
+        confettiInstance.render();
+    }
+    
+    // Stop confetti animation
+    function stopConfetti() {
+        if (confettiInstance) {
+            confettiInstance.clear();
+            confettiCanvas.style.display = 'none';
+        }
+    }
+    
+    // Leaderboard functionality
+    function updateLeaderboard() {
+        const leaderboard = getLeaderboard();
+        
+        // Add current game to leaderboard
+        leaderboard.push({
+            difficulty: currentDifficulty,
+            time: seconds,
+            moves: moves,
+            date: new Date().toISOString()
+        });
+        
+        // Sort by time (ascending)
+        leaderboard.sort((a, b) => a.time - b.time);
+        
+        // Keep only top 5 entries
+        const topEntries = leaderboard.slice(0, 5);
+        
+        // Save to localStorage
+        localStorage.setItem('leaderboard', JSON.stringify(topEntries));
+        
+        // Display leaderboard
+        displayLeaderboard();
+    }
+    
+    function getLeaderboard() {
+        const leaderboard = localStorage.getItem('leaderboard');
+        return leaderboard ? JSON.parse(leaderboard) : [];
+    }
+    
+    function displayLeaderboard(sortBy = 'time') {
+        const leaderboard = getLeaderboard();
+        
+        // Sort by specified criteria
+        if (sortBy === 'time') {
+            leaderboard.sort((a, b) => a.time - b.time);
+        } else if (sortBy === 'moves') {
+            leaderboard.sort((a, b) => a.moves - b.moves);
+        }
+        
+        // Clear current entries
+        leaderboardBody.innerHTML = '';
+        
+        // Add entries to table
+        leaderboard.forEach((entry, index) => {
+            const row = document.createElement('tr');
+            
+            const rankCell = document.createElement('td');
+            rankCell.textContent = index + 1;
+            
+            const difficultyCell = document.createElement('td');
+            difficultyCell.textContent = entry.difficulty.charAt(0).toUpperCase() + entry.difficulty.slice(1);
+            
+            const timeCell = document.createElement('td');
+            timeCell.textContent = formatTime(entry.time);
+            
+            const movesCell = document.createElement('td');
+            movesCell.textContent = entry.moves;
+            
+            const dateCell = document.createElement('td');
+            dateCell.textContent = new Date(entry.date).toLocaleDateString();
+            
+            row.appendChild(rankCell);
+            row.appendChild(difficultyCell);
+            row.appendChild(timeCell);
+            row.appendChild(movesCell);
+            row.appendChild(dateCell);
+            
+            leaderboardBody.appendChild(row);
+        });
+    }
+    
+    // Difficulty level and theme switching
+    difficultySelect.addEventListener('change', (e) => {
+        currentDifficulty = e.target.value;
+        hintsRemaining = difficulties[currentDifficulty].hints;
+        hintCountElement.textContent = hintsRemaining;
+        loadBestTime();
+        initGame();
+    });
+    
+    themeSelect.addEventListener('change', (e) => {
+        currentTheme = e.target.value;
+        document.body.className = themes[currentTheme].class;
+        initGame();
+    });
+    
+    // Hint functionality
+    hintButton.addEventListener('click', () => {
+        if (hintsRemaining <= 0 || lockBoard || isPaused || !isGameActive) return;
+        
+        // Find unmatched cards
+        const unmatchedCards = Array.from(document.querySelectorAll('.card:not(.matched)'));
+        if (unmatchedCards.length <= 0) return;
+        
+        // Find a matching pair
+        const cardNames = {};
+        let matchingPair = null;
+        
+        unmatchedCards.forEach(card => {
+            const name = card.dataset.name;
+            if (cardNames[name]) {
+                matchingPair = [cardNames[name], card];
+            } else {
+                cardNames[name] = card;
+            }
+        });
+        
+        if (matchingPair) {
+            // Play hint sound
+            sounds.hint.currentTime = 0;
+            sounds.hint.play();
+            
+            // Highlight the matching pair
+            matchingPair.forEach(card => card.classList.add('hint'));
+            
+            // Remove highlight after 2 seconds
+            setTimeout(() => {
+                matchingPair.forEach(card => card.classList.remove('hint'));
+            }, 2000);
+            
+            // Decrement hint count
+            hintsRemaining--;
+            hintCountElement.textContent = hintsRemaining;
+        }
+    });
+    
+    // Pause game functionality
+    pauseButton.addEventListener('click', () => {
+        if (!isGameActive) return;
+        
+        if (isPaused) {
+            // Resume game
+            isPaused = false;
+            pauseButton.innerHTML = '<i class="fas fa-pause"></i><span class="sr-only">Pause</span>';
+            pauseModal.classList.remove('show');
+            startTimer();
+        } else {
+            // Pause game
+            isPaused = true;
+            pauseButton.innerHTML = '<i class="fas fa-play"></i><span class="sr-only">Resume</span>';
+            pauseModal.classList.add('show');
+            stopTimer();
+        }
+    });
+    
+    // Resume game from pause modal
+    resumeGameButton.addEventListener('click', () => {
+        if (isPaused) {
+            isPaused = false;
+            pauseButton.innerHTML = '<i class="fas fa-pause"></i><span class="sr-only">Pause</span>';
+            pauseModal.classList.remove('show');
+            startTimer();
+        }
+    });
+    
+    // Victory modal buttons
+    playAgainButton.addEventListener('click', () => {
+        victoryModal.classList.remove('show');
+        stopConfetti();
+        initGame();
+    });
+    
+    changeSettingsButton.addEventListener('click', () => {
+        victoryModal.classList.remove('show');
+        stopConfetti();
+    });
+    
+    closeModalButton.addEventListener('click', () => {
+        victoryModal.classList.remove('show');
+        stopConfetti();
+    });
+    
+    // Leaderboard tab switching
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            // Remove active class from all buttons
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            button.classList.add('active');
+            
+            // Display leaderboard sorted by selected criteria
+            displayLeaderboard(button.dataset.tab);
+        });
+    });
+    
+    // Card shuffle animation
+    function animateCardShuffle() {
+        const cards = document.querySelectorAll('.card');
+        cards.forEach(card => {
+            card.classList.add('shuffle-animation');
+            // Remove animation class after animation completes
+            setTimeout(() => {
+                card.classList.remove('shuffle-animation');
+            }, 800);
+        });
+    }
+    
+    // Restart game with animation
+    restartButton.addEventListener('click', () => {
+        animateCardShuffle();
+        setTimeout(() => {
+            initGame();
+            startTimer();
+        }, 800);
+    });
+    
+    // Set initial theme
+    document.body.className = themes[currentTheme].class;
+    
+    // Display initial leaderboard
+    displayLeaderboard();
     
     // Initialize game on load
     initGame();

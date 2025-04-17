@@ -6,17 +6,53 @@
     <title>Animal Matching Memory Game</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/confetti-js@0.0.18/dist/index.min.js">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>Animal Matching Memory Game</h1>
-            <div class="game-info">
-                <div class="moves">
-                    <span>Moves:</span>
-                    <span id="moves-count">0</span>
+            <div class="controls">
+                <div class="difficulty-selector">
+                    <label for="difficulty">Difficulty:</label>
+                    <select id="difficulty">
+                        <option value="easy">Easy (4x4)</option>
+                        <option value="medium">Medium (5x4)</option>
+                        <option value="hard">Hard (6x6)</option>
+                    </select>
                 </div>
-                <button id="restart">Restart</button>
+                <div class="theme-selector">
+                    <label for="theme">Theme:</label>
+                    <select id="theme">
+                        <option value="jungle">Jungle</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="farm">Farm</option>
+                    </select>
+                </div>
+            </div>
+            <div class="game-info">
+                <div class="stats">
+                    <div class="moves">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Moves:</span>
+                        <span id="moves-count">0</span>
+                    </div>
+                    <div class="timer">
+                        <i class="fas fa-clock"></i>
+                        <span>Time:</span>
+                        <span id="timer">00:00</span>
+                    </div>
+                    <div class="best-time">
+                        <i class="fas fa-trophy"></i>
+                        <span>Best:</span>
+                        <span id="best-time">--:--</span>
+                    </div>
+                </div>
+                <div class="game-buttons">
+                    <button id="hint" class="action-button" title="Get a hint" type="button"><i class="fas fa-lightbulb"></i> <span id="hint-count">3</span></button>
+                    <button id="pause" class="action-button" title="Pause game" type="button"><i class="fas fa-pause"></i><span class="sr-only">Pause</span></button>
+                    <button id="restart" class="action-button" title="Restart game" type="button"><i class="fas fa-redo"></i><span class="sr-only">Restart</span></button>
+                </div>
             </div>
         </header>
         <div class="game-container">
@@ -24,7 +60,57 @@
                 <!-- Cards will be dynamically generated here -->
             </div>
         </div>
+        <!-- Leaderboard Section -->
+        <div class="leaderboard-container">
+            <h2>Leaderboard</h2>
+            <div class="leaderboard-tabs">
+                <button class="tab-button active" data-tab="time" type="button">Best Times</button>
+                <button class="tab-button" data-tab="moves" type="button">Fewest Moves</button>
+            </div>
+            <div class="leaderboard-content">
+                <table id="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Rank</th>
+                            <th scope="col">Difficulty</th>
+                            <th scope="col">Time</th>
+                            <th scope="col">Moves</th>
+                            <th scope="col">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                        <!-- Leaderboard entries will be dynamically generated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+    <!-- Modals -->
+    <div id="victory-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>🎉 You Win! 🎉</h2>
+            <div class="victory-stats">
+                <p>Moves: <span id="victory-moves">0</span></p>
+                <p>Time: <span id="victory-time">00:00</span></p>
+                <div id="new-record" class="hidden">New Record! 🏆</div>
+            </div>
+            <div class="modal-buttons">
+                <button id="play-again" type="button">Play Again</button>
+                <button id="change-settings" type="button">Change Settings</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="pause-modal" class="modal">
+        <div class="modal-content">
+            <h2>Game Paused</h2>
+            <p>Take a break! Your game is waiting for you.</p>
+            <button id="resume-game" type="button">Resume Game</button>
+        </div>
+    </div>
+    <canvas id="confetti-canvas"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/confetti-js@0.0.18/dist/index.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
