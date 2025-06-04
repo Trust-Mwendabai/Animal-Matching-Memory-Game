@@ -74,9 +74,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Difficulty settings
     const difficulties = {
-        easy: { rows: 4, cols: 4, pairs: 8, hints: 3 },
-        medium: { rows: 4, cols: 5, pairs: 10, hints: 2 },
-        hard: { rows: 6, cols: 6, pairs: 18, hints: 1 }
+        easy: { rows: 4, cols: 4, hints: 3 },
+        medium: { rows: 4, cols: 5, hints: 2 },
+        hard: { rows: 6, cols: 6, hints: 1 }
     };
     
     // Animal collections for different themes
@@ -179,51 +179,62 @@ document.addEventListener('DOMContentLoaded', () => {
         resetTimer();
         loadBestTime();
         
+        // Set grid columns dynamically for the selected difficulty
+        gameBoard.style.setProperty('--grid-cols', difficulties[currentDifficulty].cols);
+    gameBoard.style.setProperty('--grid-rows', difficulties[currentDifficulty].rows);
+
         // Get animals based on current theme and difficulty
-        let animals;
-        if (currentTheme === 'jungle') {
-            animals = jungleAnimals;
-        } else if (currentTheme === 'ocean') {
-            animals = oceanAnimals;
-        } else if (currentTheme === 'farm') {
-            animals = farmAnimals;
-        } else {
-            animals = jungleAnimals; // Default
-        }
-        
-        // Get number of pairs based on difficulty
-        const numPairs = difficulties[currentDifficulty].pairs;
-        
-        // Select random animals for this game
-        const selectedAnimals = shuffleArray(animals).slice(0, numPairs);
-        
-        // Create array with pairs of animals
-        const animalPairs = [...selectedAnimals, ...selectedAnimals];
-        // Shuffle array
-        cards = shuffleArray(animalPairs);
-        
-        // Generate cards
-        gameBoard.innerHTML = '';
-        gameBoard.className = `game-board ${currentDifficulty}`;
-        cards.forEach((animal, index) => {
-            const card = document.createElement('div');
-            card.classList.add('card');
-            card.dataset.index = index;
-            card.dataset.name = animal.name;
-            
-            const cardFront = document.createElement('div');
-            cardFront.classList.add('card-face', 'card-front');
-            cardFront.innerHTML = animal.icon;
-            
-            const cardBack = document.createElement('div');
-            cardBack.classList.add('card-face', 'card-back');
-            
-            card.appendChild(cardFront);
-            card.appendChild(cardBack);
-            
-            card.addEventListener('click', flipCard);
-            gameBoard.appendChild(card);
-        });
+    let animals;
+    if (currentTheme === 'jungle') {
+        animals = jungleAnimals;
+    } else if (currentTheme === 'ocean') {
+        animals = oceanAnimals;
+    } else if (currentTheme === 'farm') {
+        animals = farmAnimals;
+    } else {
+        animals = jungleAnimals;
+    }
+
+    // Calculate pairs based on grid size
+    const rows = difficulties[currentDifficulty].rows;
+    const cols = difficulties[currentDifficulty].cols;
+    const totalCards = rows * cols;
+    const pairs = totalCards / 2;
+
+    // Ensure enough pairs, repeat animals if needed
+    let selectedAnimals = [];
+    while (selectedAnimals.length < pairs) {
+        let needed = pairs - selectedAnimals.length;
+        let toAdd = shuffleArray(animals).slice(0, Math.min(needed, animals.length));
+        selectedAnimals = selectedAnimals.concat(toAdd);
+    }
+
+    // Create the deck: two of each animal
+    cards = shuffleArray([...selectedAnimals, ...selectedAnimals]);
+
+    // Clear previous cards
+    gameBoard.innerHTML = '';
+
+    // Generate cards
+    cards.forEach((animal, index) => {
+        const card = document.createElement('div');
+        card.classList.add('card');
+        card.dataset.index = index;
+        card.dataset.name = animal.name;
+
+        const cardFront = document.createElement('div');
+        cardFront.classList.add('card-face', 'card-front');
+        cardFront.innerHTML = animal.icon;
+
+        const cardBack = document.createElement('div');
+        cardBack.classList.add('card-face', 'card-back');
+
+        card.appendChild(cardFront);
+        card.appendChild(cardBack);
+
+        card.addEventListener('click', flipCard);
+        gameBoard.appendChild(card);
+    });
     }
     
     // Shuffle array using Fisher-Yates algorithm

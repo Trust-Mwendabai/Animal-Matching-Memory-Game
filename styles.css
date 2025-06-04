@@ -161,25 +161,20 @@ select {
 
 .game-board {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(var(--grid-cols, 4), 1fr);
+    grid-template-rows: repeat(var(--grid-rows, 4), 1fr);
     grid-gap: 10px;
     max-width: 600px;
     margin: 0 auto;
     transition: all 0.5s ease;
 }
 
-.game-board.medium {
-    grid-template-columns: repeat(5, 1fr);
-}
 
-.game-board.hard {
-    grid-template-columns: repeat(6, 1fr);
-    grid-gap: 8px;
-}
 
 /* Card Styles */
 .card {
-    height: 100px;
+    aspect-ratio: 1 / 1;
+    width: 100%;
     position: relative;
     transform-style: preserve-3d;
     transition: transform 0.5s;
