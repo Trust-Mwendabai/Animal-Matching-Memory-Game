@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         farm: {
             name: 'Farm',
-            class: 'theme-farm',
+
             cardBack: 'url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'><path d=\'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\'/></svg>")'
         }
     };
@@ -187,11 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let animals;
     if (currentTheme === 'jungle') {
         animals = jungleAnimals;
-    } else if (currentTheme === 'ocean') {
-        animals = oceanAnimals;
-    } else if (currentTheme === 'farm') {
-        animals = farmAnimals;
-    } else {
+        } else {
         animals = jungleAnimals;
     }
 
@@ -463,7 +459,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     themeSelect.addEventListener('change', (e) => {
         currentTheme = e.target.value;
-        document.body.className = themes[currentTheme].class;
+        // Remove previous theme classes only, preserve other classes
+        document.body.classList.remove('theme-jungle', 'theme-ocean');
+        document.body.classList.add(themes[currentTheme].class);
         initGame();
     });
     
